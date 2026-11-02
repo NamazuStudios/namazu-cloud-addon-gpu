@@ -55,7 +55,9 @@ addon_gpu = {
 Defaults (when a tenant's baseline doesn't override) are the baseline's old
 posture exactly: g5/g6 pools exist with limit 0, g4dn/g7 absent, every `-xl`
 ceiling 0 — nothing can provision a GPU unless the tenant's baseline raises
-a limit.
+a limit. `suspended` is not a tenant knob: the baseline folds it in from
+its `billing_suspended` input (the zero-compute billing hold) and it zeroes
+every pool's limits while set.
 
 **Single-GPU-only tenant** (the shape Dank Studios asked for):
 

@@ -35,6 +35,13 @@ variable "gpu" {
     max_gpus_per_node = number
     xl_expire_after   = string
     root_volume_size  = string
+
+    # Set by the tenant baseline from its billing_suspended input (the
+    # zero-compute billing hold, namazu-cloud-instance PR #89) — not a
+    # tenant tfvars knob. While true every pool's limits drop to zero so
+    # Karpenter provisions nothing new, the exact shape the baseline
+    # applied to its own pools.
+    suspended = optional(bool, false)
   })
 
   default = {

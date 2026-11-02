@@ -71,6 +71,18 @@ locals {
   # "1" only for single-GPU tenants), -xl takes the Gt side of the split.
   gpu_count_values = [for n in range(1, var.gpu.max_gpus_per_node + 1) : tostring(n)]
 
+  # billing_suspended (the baseline's zero-compute billing hold, folded
+  # into this map by the tenant baseline): every pool's limits drop to
+  # zero so Karpenter provisions nothing new — the exact shape the
+  # baseline applied to its own pools (namazu-cloud-instance PR #89).
+  # limits only gate PROVISIONING; nodes already launched are terminated
+  # by the baseline's own post-apply path, not by this addon.
+  suspended_limits = {
+    cpu              = "0"
+    memory           = "0Gi"
+    "nvidia.com/gpu" = "0"
+  }
+
   generations = {
     g4dn = {
       enabled        = var.gpu.g4dn_enabled
@@ -102,18 +114,26 @@ locals {
     {
       for gen, cfg in local.generations : "general-purpose-gpu-${gen}" => {
         instance_types = cfg.instance_types
-        limits         = { cpu = "1k", memory = "500Gi", "nvidia.com/gpu" = tostring(cfg.limit) }
-        expire_after   = "168h"
-        requirements   = [{ key = "karpenter.k8s.aws/instance-gpu-count", operator = "In", values = local.gpu_count_values }]
+        limits = var.gpu.suspended ? local.suspended_limits : {
+          cpu              = "1k"
+          memory           = "500Gi"
+          "nvidia.com/gpu" = tostring(cfg.limit)
+        }
+        expire_after = "168h"
+        requirements = [{ key = "karpenter.k8s.aws/instance-gpu-count", operator = "In", values = local.gpu_count_values }]
       }
       if cfg.enabled
     },
     {
       for gen, cfg in local.generations : "general-purpose-gpu-${gen}-xl" => {
         instance_types = cfg.instance_types
-        limits         = { cpu = "1k", memory = "500Gi", "nvidia.com/gpu" = tostring(cfg.xl_limit) }
-        expire_after   = var.gpu.xl_expire_after
-        requirements   = [{ key = "karpenter.k8s.aws/instance-gpu-count", operator = "Gt", values = [tostring(var.gpu.max_gpus_per_node)] }]
+        limits = var.gpu.suspended ? local.suspended_limits : {
+          cpu              = "1k"
+          memory           = "500Gi"
+          "nvidia.com/gpu" = tostring(cfg.xl_limit)
+        }
+        expire_after = var.gpu.xl_expire_after
+        requirements = [{ key = "karpenter.k8s.aws/instance-gpu-count", operator = "Gt", values = [tostring(var.gpu.max_gpus_per_node)] }]
       }
       if cfg.enabled && var.gpu.xl_enabled
     },
