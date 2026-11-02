@@ -1,0 +1,36 @@
+# manifest.yaml — THIS addon's input declaration (contract clause 10).
+#
+# `input` maps Terraform variable names (declared in variables.tf) to bindings:
+#   - a literal (evaluated as written)
+#   - `$instance.<output>[.<key>...]`  — resolved per invocation against THIS
+#     tenant's baseline root outputs
+#   - `$addon.<addon_id>.<output>[...]` — resolved from the OTHER addon's
+#     existing statefile for this tenant (loud failure if not installed)
+#   - `!`-prefixed variants — acknowledged sensitive wiring (rides the env
+#     channel only; never on disk, never logged)
+#
+# The visibility contract: `visibility: shared` (default) makes this addon
+# consumable by any org fork; `visibility: private` + `owner_org` (this org's
+# database unique id) restricts consumption to that org (lint + audit
+# enforce; the fork-local private root flip is described in README).
+
+description: >-
+  Opt-in GPU node capacity: the per-tenant general-purpose GPU Karpenter
+  tiers (g4dn / g5 / g6 / g7, each split into a base pool for 1-2 GPU
+  instance sizes and a self-reclaiming -xl pool for 4+ GPU sizes), ported
+  1:1 from namazu-cloud-instance's baseline and installed per tenant by
+  org forks. Every tier knob — enable flags, per-pool nvidia.com/gpu
+  ceilings, instance-type allow-lists, root volume size, -xl expiry — is
+  per-tenant and resolves from the tenant baseline's addon_gpu output;
+  nothing is enabled beyond the baseline's inert defaults unless the
+  tenant's own baseline says so.
+visibility: shared
+input:
+  # Cluster wiring — facts only the tenant baseline knows.
+  karpenter_node_role_name: $instance.karpenter_node_role_name
+  gpu_capacity_types: $instance.gpu_capacity_types
+  # The whole per-tenant tier config, one binding: the baseline's
+  # addon_gpu output (object with the same shape as variables.tf's `gpu`).
+  # Tenants adjust their quota by editing their baseline's addon_gpu
+  # tfvars and re-applying the baseline, then this addon.
+  gpu: $instance.addon_gpu

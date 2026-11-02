@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# The exec-plugin wrapper: `aws-eks-get-token-retry`.
+#
+# Contract with the runtime: every executor of an addon root (deploy image
+# PATH; GitHub workflows: bin/ on PATH via "$GITHUB_WORKSPACE/bin") carries
+# this script. Under Terraform's default parallelism, concurrent exec-plugin
+# invocations can race on the AWS CLI's local credential cache and fail; the
+# retry wrapper turns that race into a delay instead of a broken run.
+set -uo pipefail
+
+for attempt in 1 2 3 4 5; do
+  rc=0
+  aws "$@" || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    exit 0
+  fi
+  echo "aws-eks-get-token-retry: attempt ${attempt} failed (rc=${rc}); retrying" >&2
+  sleep "${attempt}"
+done
+exit "${rc}"
