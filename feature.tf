@@ -233,7 +233,19 @@ resource "kubectl_manifest" "karpenter_gpu_node_pool" {
             { key = local.tenant_label_key, operator = "In", values = [local.addon_namespace] },
             { key = local.label.service, operator = "In", values = [each.key] },
           ], each.value.requirements)
+          # Two taints during the shared-NodePool transition
+          # (terraform#58): the legacy per-tenant taint (this tenant's own
+          # GPU pools, as always) AND the generic dedicated taint stamped
+          # by the cluster's shared capacity pools — tenant pods tolerate
+          # both (namazu-cloud-instance PR #99), so a GPU pod admitted by
+          # the require-tenant-pin VAP schedules on either pool class.
+          # The per-tenant taint is dropped once migrations complete.
           taints = [
+            {
+              key    = "cloud.namazustudios.com/dedicated"
+              value  = "tenant"
+              effect = "NoSchedule"
+            },
             {
               key    = local.tenant_label_key
               value  = local.addon_namespace
