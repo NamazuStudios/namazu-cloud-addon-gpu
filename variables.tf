@@ -36,6 +36,12 @@ variable "gpu" {
     xl_expire_after   = string
     root_volume_size  = string
 
+    # Per-POD gpu cap for the GPU authorization policy (50-gpu_authorization.tf):
+    # a NodePool's `nvidia.com/gpu` limit caps the pool in AGGREGATE, so one
+    # pod can still consume a tenant's entire GPU budget. 0 (default) disables
+    # the per-pod check and leaves the ceiling entirely to the pool limits.
+    max_gpus_per_pod = optional(number, 0)
+
     # Set by the tenant baseline from its billing_suspended input (the
     # zero-compute billing hold, namazu-cloud-instance PR #89) — not a
     # tenant tfvars knob. While true every pool's limits drop to zero so
@@ -71,6 +77,7 @@ variable "gpu" {
     max_gpus_per_node = 2
     xl_expire_after   = "2h"
     root_volume_size  = "100Gi"
+    max_gpus_per_pod  = 0
   }
 }
 
