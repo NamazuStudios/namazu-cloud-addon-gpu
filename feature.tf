@@ -233,7 +233,32 @@ resource "kubectl_manifest" "karpenter_gpu_node_pool" {
             { key = local.tenant_label_key, operator = "In", values = [local.addon_namespace] },
             { key = local.label.service, operator = "In", values = [each.key] },
           ], each.value.requirements)
+          # THREE taints during the shared-NodePool transition
+          # (terraform#58): the legacy per-tenant taint (this tenant's own
+          # GPU pools, as always), the generic dedicated taint stamped
+          # by the cluster's shared capacity pools — tenant pods tolerate
+          # both (namazu-cloud-instance #99/#100) — AND the GPU capability
+          # taint: the fixed, well-known key the GPU authorization policy
+          # (this addon's gpu-authorization PR) keys on. A pod without that
+          # toleration cannot land on a GPU node at all, so the taint is the
+          # scheduling gate and the policy is the authorization gate; a
+          # non-GPU tenant has neither.
+          # The per-tenant taint is dropped once migrations complete.
+          # NOTE: NodePool taints apply at PROVISIONING — nodes launched
+          # before this change keep their old taint set until they expire
+          # (expireAfter) or are drained; drain them after apply if the
+          # gate must be immediate.
           taints = [
+            {
+              key    = "nvidia.com/gpu"
+              value  = "present"
+              effect = "NoSchedule"
+            },
+            {
+              key    = "cloud.namazustudios.com/dedicated"
+              value  = "tenant"
+              effect = "NoSchedule"
+            },
             {
               key    = local.tenant_label_key
               value  = local.addon_namespace
