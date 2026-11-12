@@ -26,6 +26,7 @@ description: >-
   beyond this addon's inert defaults unless the fork's matrix entry says
   so.
 visibility: shared
+display: GPU Node Capacity
 input:
   # Cluster wiring — ONE generic fact only the tenant baseline knows: the
   # Karpenter node role (it exists regardless of any addon).
