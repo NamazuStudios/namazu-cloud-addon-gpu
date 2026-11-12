@@ -18,19 +18,19 @@ this root under **its** executor role at a pinned ref.
 
 | Variable | Source | Meaning |
 |---|---|---|
-| `karpenter_node_role_name` | `$instance.karpenter_node_role_name` | the cluster's Karpenter node IAM role (nodes launch under it) |
-| `gpu_capacity_types` | `$instance.gpu_capacity_types` | spot eligibility as the tenant's own baseline computes it (HA: spot only when the tenant spans >1 AZ; single_instance / per_user: spot + on-demand) |
+| `karpenter_node_role_name` | `$instance.karpenter_node_role_name` | the cluster's Karpenter node IAM role (nodes launch under it) — the ONE generic fact the baseline still carries for this addon |
+| `capacity_types` | fork matrix `--contract capacity_types=[...]` | spot eligibility — the FORK's per-tenant choice (default `["on-demand"]`; multi-AZ tenants may add spot) |
 | `gpu` | fork matrix `--contract gpu='{...}'` | the whole per-tenant tier config (see below) |
 
-The two cluster-wiring bindings read **tenant baseline outputs** (generic
-facts). The `gpu` tier config deliberately does NOT flow through the
-baseline anymore: baselines carry addon-specific outputs no longer
-(namazu-cloud-instance#130 removes `addon_gpu` entirely) — the consuming
-org fork's `sync.yml` matrix entry is the request AND the config, delivered
-through the runner's `contract` action input
-(namazu-cloud-addon-runner#4). Until a tenant's baseline is re-applied with
-the generic outputs, installing this addon for it fails loudly naming the
-missing output (the contract's preferred failure).
+The baseline carries **zero gpu knowledge**: `karpenter_node_role_name` is
+generic cluster wiring (it exists regardless of addons), and everything
+gpu-specific — the tier config AND spot eligibility — is per-tenant fork
+configuration via the runner's `contract` input
+(namazu-cloud-addon-runner#4). `gpu_capacity_types` is likewise being
+REMOVED from the baseline (namazu-cloud-instance#130). The only baseline
+dependency left is the node role; until a tenant's baseline is re-applied
+with it, installing this addon fails loudly naming the missing output (the
+contract's preferred failure).
 
 ## The `gpu` input (per-tenant quota, via `--contract`)
 

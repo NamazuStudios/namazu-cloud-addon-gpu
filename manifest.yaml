@@ -27,10 +27,10 @@ description: >-
   so.
 visibility: shared
 input:
-  # Cluster wiring — generic facts only the tenant baseline knows.
-  # (Addon-specific config no longer flows through the baseline: the
-  # addon_gpu variable is bound by the consuming fork's matrix entry via
-  # --contract, per the Namazu Cloud Addon System decision — see
-  # namazu-cloud-instance#130 and namazu-cloud-addon-gpu#4.)
+  # Cluster wiring — ONE generic fact only the tenant baseline knows: the
+  # Karpenter node role (it exists regardless of any addon).
+  # (Addon-specific config AND gpu-specific facts no longer flow through the
+  # baseline: the addon_gpu variable rides --contract (namazu-cloud-
+  # instance#130 / namazu-cloud-addon-gpu#4), and capacity types are the
+  # FORK's per-tenant choice below — the baseline carries ZERO gpu knowledge.)
   karpenter_node_role_name: $instance.karpenter_node_role_name
-  gpu_capacity_types: $instance.gpu_capacity_types

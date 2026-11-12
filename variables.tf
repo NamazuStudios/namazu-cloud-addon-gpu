@@ -86,8 +86,8 @@ variable "karpenter_node_role_name" {
   type        = string
 }
 
-variable "gpu_capacity_types" {
-  description = "Capacity types the GPU NodePools may launch, as computed by the tenant's own baseline (HA: spot only when the tenant spans >1 AZ; single_instance / per_user: spot + on-demand). Bound from the tenant baseline: $instance.gpu_capacity_types."
+variable "capacity_types" {
+  description = "Capacity types the GPU NodePools may launch — a PER-TENANT choice the consuming fork makes in its matrix entry (contract), not a baseline output: the baseline carries zero gpu knowledge. Defaults to on-demand only (the safe posture); multi-AZ tenants may add spot (the old HA rule: spot only when the tenant spans >1 AZ, so one AZ's spot capacity loss is survivable)."
   type        = list(string)
   default     = ["on-demand"]
 }
