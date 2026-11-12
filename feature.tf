@@ -228,7 +228,7 @@ resource "kubectl_manifest" "karpenter_gpu_node_pool" {
           requirements = concat([
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
             { key = "kubernetes.io/os", operator = "In", values = ["linux"] },
-            { key = "karpenter.sh/capacity-type", operator = "In", values = var.gpu_capacity_types },
+            { key = "karpenter.sh/capacity-type", operator = "In", values = var.capacity_types },
             { key = "node.kubernetes.io/instance-type", operator = "In", values = each.value.instance_types },
             { key = local.tenant_label_key, operator = "In", values = [local.addon_namespace] },
             { key = local.label.service, operator = "In", values = [each.key] },

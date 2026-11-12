@@ -21,16 +21,16 @@ description: >-
   1:1 from namazu-cloud-instance's baseline and installed per tenant by
   org forks. Every tier knob — enable flags, per-pool nvidia.com/gpu
   ceilings, instance-type allow-lists, root volume size, -xl expiry — is
-  per-tenant and resolves from the tenant baseline's addon_gpu output;
-  nothing is enabled beyond the baseline's inert defaults unless the
-  tenant's own baseline says so.
+  per-tenant and rides the consuming fork's sync.yml matrix via the
+  runner's contract input (--contract gpu='{...}'); nothing is enabled
+  beyond this addon's inert defaults unless the fork's matrix entry says
+  so.
 visibility: shared
 input:
-  # Cluster wiring — facts only the tenant baseline knows.
+  # Cluster wiring — ONE generic fact only the tenant baseline knows: the
+  # Karpenter node role (it exists regardless of any addon).
+  # (Addon-specific config AND gpu-specific facts no longer flow through the
+  # baseline: the addon_gpu variable rides --contract (namazu-cloud-
+  # instance#130 / namazu-cloud-addon-gpu#4), and capacity types are the
+  # FORK's per-tenant choice below — the baseline carries ZERO gpu knowledge.)
   karpenter_node_role_name: $instance.karpenter_node_role_name
-  gpu_capacity_types: $instance.gpu_capacity_types
-  # The whole per-tenant tier config, one binding: the baseline's
-  # addon_gpu output (object with the same shape as variables.tf's `gpu`).
-  # Tenants adjust their quota by editing their baseline's addon_gpu
-  # tfvars and re-applying the baseline, then this addon.
-  gpu: $instance.addon_gpu

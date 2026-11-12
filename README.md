@@ -16,23 +16,29 @@ this root under **its** executor role at a pinned ref.
 
 ## What it reads (manifest.yaml bindings)
 
-| Variable | Binding | Meaning |
+| Variable | Source | Meaning |
 |---|---|---|
-| `karpenter_node_role_name` | `$instance.karpenter_node_role_name` | the cluster's Karpenter node IAM role (nodes launch under it) |
-| `gpu_capacity_types` | `$instance.gpu_capacity_types` | spot eligibility as the tenant's own baseline computes it (HA: spot only when the tenant spans >1 AZ; single_instance / per_user: spot + on-demand) |
-| `gpu` | `$instance.addon_gpu` | the whole per-tenant tier config (see below) |
+| `karpenter_node_role_name` | `$instance.karpenter_node_role_name` | the cluster's Karpenter node IAM role (nodes launch under it) — the ONE generic fact the baseline still carries for this addon |
+| `capacity_types` | fork matrix `--contract capacity_types=[...]` | spot eligibility — the FORK's per-tenant choice (default `["on-demand"]`; multi-AZ tenants may add spot) |
+| `gpu` | fork matrix `--contract gpu='{...}'` | the whole per-tenant tier config (see below) |
 
-All three come from the **tenant baseline outputs** — the PR to
-`namazu-cloud-instance` adds `karpenter_node_role_name`,
-`gpu_capacity_types` and `addon_gpu` to the `per_tenant/aws/*` roots. Until
-a tenant's baseline is re-applied with those outputs, installing this addon
-for it fails loudly naming the missing output (the contract's preferred
-failure).
+The baseline carries **zero gpu knowledge**: `karpenter_node_role_name` is
+generic cluster wiring (it exists regardless of addons), and everything
+gpu-specific — the tier config AND spot eligibility — is per-tenant fork
+configuration via the runner's `contract` input
+(namazu-cloud-addon-runner#4). `gpu_capacity_types` is likewise being
+REMOVED from the baseline (namazu-cloud-instance#130). The only baseline
+dependency left is the node role; until a tenant's baseline is re-applied
+with it, installing this addon fails loudly naming the missing output (the
+contract's preferred failure).
 
-## The `gpu` input (per-tenant quota)
+## The `gpu` input (per-tenant quota, via `--contract`)
+
+The tier config is one JSON object passed by the consuming fork's matrix
+entry (the runner forwards each line as `--contract gpu='...'`):
 
 ```hcl
-addon_gpu = {
+gpu = {
   g4dn_enabled = false          # generation on/off; off destroys its pools
   g5_enabled   = true           #   (Karpenter drains + terminates the nodes)
   g6_enabled   = true
@@ -52,17 +58,25 @@ addon_gpu = {
 }
 ```
 
-Defaults (when a tenant's baseline doesn't override) are the baseline's old
-posture exactly: g5/g6 pools exist with limit 0, g4dn/g7 absent, every `-xl`
-ceiling 0 — nothing can provision a GPU unless the tenant's baseline raises
-a limit. `suspended` is not a tenant knob: the baseline folds it in from
-its `billing_suspended` input (the zero-compute billing hold) and it zeroes
-every pool's limits while set.
+Defaults (when a fork's matrix entry passes no `gpu` contract) are the
+baseline's old posture exactly: g5/g6 pools exist with limit 0, g4dn/g7
+absent, every `-xl` ceiling 0 — nothing can provision a GPU unless the
+fork's contract raises a limit.
+
+**`suspended` no longer folds in from the baseline.** It used to ride the
+baseline's `addon_gpu` output (folded from `billing_suspended`, the
+zero-compute billing hold, zeroing every pool's limits while set). With the
+binding gone it defaults to `false` — a billing-suspended tenant's GPU
+pools stay defined with their configured limits. Two follow-up paths:
+either the fork's matrix entry zeroes the limits via `--contract` when the
+tenant is suspended, or a later generic `billing_suspended` baseline output
+gets bound here explicitly (tracked in namazu-cloud-instance#130's
+discussion).
 
 **Single-GPU-only tenant** (the shape Dank Studios asked for):
 
 ```hcl
-addon_gpu = {
+gpu = {
   g4dn_enabled = false
   g5_enabled   = true
   g6_enabled   = true
@@ -130,18 +144,25 @@ carry (the template's default does not):
 ## Migration / ordering
 
 The baseline used to create the same objects (`<tenant>-gpu`,
-`<tenant>-general-purpose-gpu-<gen>*`). Two roots must never own the same
+`<tenant>-general-purpose-gpu-<gen>*`) and to own the per-tenant quota via
+its `addon_gpu` variable/output. Two roots must never own the same
 Kubernetes object, so the order is:
 
-1. Land the `namazu-cloud-instance` PR that removes the GPU pools **and**
-   adds the outputs above.
-2. Re-apply each GPU tenant's baseline (pools disappear; nothing is running
+1. Land the `namazu-cloud-addon-runner` `contract` input
+   (namazu-cloud-addon-runner#4) and THIS repo's manifest decoupling
+   (this PR), then the org forks' matrix entries gain `contract:` with the
+   tenant's tier config.
+2. Land the `namazu-cloud-instance` PR that removes the GPU pools **and**
+   the `addon_gpu` variable/output (namazu-cloud-instance#130).
+3. Re-apply each GPU tenant's baseline (pools disappear; nothing is running
    on them today — every GPU limit in every env is 0).
-3. Install this addon for the tenant from its org fork (`sync.yml` matrix
-   entry, pinned ref).
+4. Install this addon for the tenant from its org fork (`sync.yml` matrix
+   entry at a pinned ref, with the tenant's `gpu` config as `contract`
+   lines).
 
-A quota change later is: edit the tenant's baseline `addon_gpu` tfvars →
-baseline apply → addon apply (its own `sync.yml` run).
+A quota change later is: edit the `contract:` lines in the fork's
+`sync.yml` matrix entry → merge → the addon's own `sync.yml` run applies
+it.
 
 ## License
 
