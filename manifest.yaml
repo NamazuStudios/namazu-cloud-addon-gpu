@@ -25,6 +25,7 @@ description: >-
   nothing is enabled beyond the baseline's inert defaults unless the
   tenant's own baseline says so.
 visibility: shared
+display: GPU Node Capacity
 input:
   # Cluster wiring — facts only the tenant baseline knows.
   karpenter_node_role_name: $instance.karpenter_node_role_name
