@@ -191,3 +191,23 @@ code as published in this repository; work delivered to you under
 contract — including any official addon activated for a fee or custom
 addon authored for you — is delivered under that agreement, not under the
 license's reciprocity terms.
+
+## Built for generative AI workloads
+
+A generative AI tenant profile that lands repeatedly: per-tenant **image
+generation / LLM inference** with no noisy-neighbor contention.
+
+- **Dedicated GPU node pools per tenant** — a tenant's diffusion workers
+  schedule on GPU nodes carrying that tenant's taint; another tenant's
+  burst can never steal the capacity.
+- **Per-tenant quota as a product surface** — `gpu={"g5_limit": 2, ...}`
+  caps the tenant's aggregate GPUs; bill the cap, not the chaos.
+- **Bursty 4-GPU renders without permanent cost** — the self-reclaiming
+  `-xl` pools rent 4x-GPU machines for a bounded window
+  (`xl_expire_after`) and hand them back; batch video/music generation
+  uses them, interactive inference does not.
+- **Single-GPU shapes for serving** — `max_gpus_per_node: 1` +
+  `max_gpus_per_pod: 1` keeps per-request latency predictable on
+  g4dn/g5.xlarge-class instances.
+- **Capacity types per tenant** — spot for batch generation, on-demand
+  for serving, decided per tenant in the fork's matrix.
