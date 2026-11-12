@@ -211,3 +211,35 @@ generation / LLM inference** with no noisy-neighbor contention.
   g4dn/g5.xlarge-class instances.
 - **Capacity types per tenant** — spot for batch generation, on-demand
   for serving, decided per tenant in the fork's matrix.
+
+## Batch-shaped: as large or as small as the job needs, scaling on demand
+
+A GPU pool here is **a ceiling, not a reservation**. There is no always-on
+cluster of GPUs to pay for between jobs:
+
+- **Scale on demand, per pod.** When a job requests `nvidia.com/gpu`, the
+  NodePool provisions exactly the nodes those pods need — one worker, one
+  node; a fan-out of fifty workers, fifty nodes (bounded by the tenant's
+  tier limits). When the pods finish, Karpenter drains the idle nodes and
+  terminates them: **empty pools cost zero**.
+- **Batch jobs write themselves.** Dispatch an N-worker generation or
+  fine-tuning batch with a queue or Job; the pool grows from zero to N
+  (capped by the tenant's limits), runs the batch, and returns to zero
+  when the last worker exits. Your infra spend tracks the batch, not the
+  clock.
+- **Keep a pool as large as you wish** — raise the tier limits
+  (`g5_limit`, `g4dn_limit`) in the tenant's matrix entry and the ceiling
+  rises; a resident serving workload holds its nodes warm while batch
+  spikes layer on top, both sharing the tenant cap.
+- **Keep it as small as you wish** — a limit of 0 means the pool exists
+  but can never provision: flip it up for a batch window, back down
+  after, entirely from the fork's matrix.
+- **The expensive shapes clean up after themselves** — the `-xl` pools
+  (4+ GPU machines) carry `expireAfter` self-reclaim: a forgotten big box
+  costs you its bounded window, not its weekend.
+- **Disruption is deliberately gentle** — `WhenEmpty/10m` consolidation
+  only reaps nodes that have NO bound pods, so a batch that checkpoints
+  mid-run is never consolidated out from under a worker.
+
+Scale on demand up, drain to zero down, per tenant, per entry — that is
+the whole operating model.
