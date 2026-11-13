@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://cloud.namazustudios.com"><img src="namazu-cloud.png" alt="Namazu Cloud" width="280"></a>
+</p>
+
 # namazu-cloud-addon-gpu
 
 Opt-in **GPU node capacity** as a per-tenant addon: the general-purpose GPU
