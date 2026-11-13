@@ -62,9 +62,17 @@ locals {
   # discovery tag (the subnets + security groups tenant nodes land in).
   karpenter_discovery_tag_value = "${data.aws_region.current.region}-${var.eks_cluster_name}"
 
+  # The WhenEmpty consolidation delay: how long an EMPTY gpu node lingers
+  # before Karpenter terminates it. The contract's optional
+  # `gpu.consolidate_after` (a Go duration; default 10m) — the tenant's
+  # cost-vs-warmth dial: shorter = the node's bill stops sooner after the
+  # queue drains (the image cache dies with it); longer = the next
+  # dispatch skips the pull. (The tenant asked 2026-11-13: "is there a
+  # simple variable that governs the WhenEmpty consolidation?" — there
+  # wasn't.)
   disruption_gpu = {
     consolidationPolicy = "WhenEmpty"
-    consolidateAfter    = "10m"
+    consolidateAfter    = try(var.gpu.consolidate_after, "10m")
   }
 
   # Base pool admits 1..max_gpus_per_node GPUs per instance ("1","2" today;
