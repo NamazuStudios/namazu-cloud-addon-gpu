@@ -42,6 +42,15 @@ variable "gpu" {
     # the per-pod check and leaves the ceiling entirely to the pool limits.
     max_gpus_per_pod = optional(number, 0)
 
+    # The WhenEmpty consolidation delay (a Go duration — the node terminates
+    # this long after its last pod leaves; the tenant's cost-vs-warmth dial:
+    # shorter = the bill stops sooner, the image cache dies with the node).
+    # NOTE: an UNDECLARED key in this object is SILENTLY STRIPPED by the
+    # terraform's type-coercion (observed 2026-11-13: consolidate_after in
+    # the contract's gpu JSON vanished, try() fell back to 10m, apply green)
+    # — it must be DECLARED here to exist.
+    consolidate_after = optional(string, "10m")
+
     # Set by the tenant baseline from its billing_suspended input (the
     # zero-compute billing hold, namazu-cloud-instance PR #89) — not a
     # tenant tfvars knob. While true every pool's limits drop to zero so

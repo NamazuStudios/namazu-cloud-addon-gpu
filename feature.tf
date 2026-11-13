@@ -72,7 +72,7 @@ locals {
   # wasn't.)
   disruption_gpu = {
     consolidationPolicy = "WhenEmpty"
-    consolidateAfter    = try(var.gpu.consolidate_after, "10m")
+    consolidateAfter    = var.gpu.consolidate_after
   }
 
   # Base pool admits 1..max_gpus_per_node GPUs per instance ("1","2" today;
