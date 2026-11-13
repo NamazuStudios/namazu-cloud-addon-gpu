@@ -249,3 +249,11 @@ cluster of GPUs to pay for between jobs:
 
 Scale on demand up, drain to zero down, per tenant, per entry — that is
 the whole operating model.
+<p align="center">
+  <a href="https://cloud.namazustudios.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="aws-partner-dark.png">
+      <img src="aws-partner-light.png" alt="AWS Partner" width="200">
+    </picture>
+  </a>
+</p>
