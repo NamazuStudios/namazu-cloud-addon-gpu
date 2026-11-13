@@ -90,13 +90,13 @@ resource "kubectl_manifest" "gpu_authorization_policy" {
                 c,
                 !has(c.resources) || !has(c.resources.limits)
                 || !('nvidia.com/gpu' in c.resources.limits)
-                || number(c.resources.limits['nvidia.com/gpu']) <= variables.gpuPerPodCap
+                || int(c.resources.limits['nvidia.com/gpu']) <= variables.gpuPerPodCap
               ))
               && (!has(object.spec.initContainers) || object.spec.initContainers.all(
                 c,
                 !has(c.resources) || !has(c.resources.limits)
                 || !('nvidia.com/gpu' in c.resources.limits)
-                || number(c.resources.limits['nvidia.com/gpu']) <= variables.gpuPerPodCap
+                || int(c.resources.limits['nvidia.com/gpu']) <= variables.gpuPerPodCap
               ))
             )
           reason: Forbidden
